@@ -52,6 +52,7 @@ const fieryGlowVertexShader = `
 const fieryGlowFragmentShader = `
   uniform float uTime;
   uniform vec3 uColor;
+  varying vec2 vUv;
   varying vec3 vNormal;
 
   // Simple pseudo-random function
@@ -251,7 +252,7 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
     
     const handleKeyboardDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      if (['w', 'a', 's', 'd'].includes(key)) {
+      if (['w', 'a', 's', 'd', 'q', 'e'].includes(key)) {
         event.preventDefault();
       }
       keysPressed.current[key] = true;
@@ -312,6 +313,7 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
       
       if (universeType === 'my-wormholes') {
         const moveSpeed = 0.2;
+        const rotateSpeed = 0.02;
         const camDirection = new THREE.Vector3();
         camera.getWorldDirection(camDirection);
         camDirection.y = 0;
@@ -324,6 +326,9 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
         if (keysPressed.current['s']) characterPosition.current.addScaledVector(camDirection, -moveSpeed);
         if (keysPressed.current['a']) characterPosition.current.addScaledVector(strafeDirection, moveSpeed);
         if (keysPressed.current['d']) characterPosition.current.addScaledVector(strafeDirection, -moveSpeed);
+
+        if (keysPressed.current['q']) controls.rotation.y -= rotateSpeed;
+        if (keysPressed.current['e']) controls.rotation.y += rotateSpeed;
         
         const entrancePosition = new THREE.Vector3(0, 5, -25);
         const exitPosition = new THREE.Vector3(wormholeExitPosRef.current.x, 5, wormholeExitPosRef.current.z);
@@ -355,7 +360,6 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
         if(wormholeExitObjectRef.current && wormholeExitLightRef.current) {
           const exitPos = new THREE.Vector3(wormholeExitPosRef.current.x, 5, wormholeExitPosRef.current.z);
           wormholeExitObjectRef.current.position.copy(exitPos);
-          wormholeExitObjectRef.current.rotation.y += 0.005;
           wormholeExitLightRef.current.position.copy(exitPos);
         }
 
