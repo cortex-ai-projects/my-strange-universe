@@ -18,8 +18,9 @@ import {
   SidebarGroup,
 } from "@/components/ui/sidebar";
 import { Box, Cone, Circle, GitCommitHorizontal } from "lucide-react";
+import { WormholeMinimap } from "./WormholeMinimap";
 
-export type UniverseType = "wormhole" | "red-circle";
+export type UniverseType = "wormhole" | "my-wormholes";
 type GeometryType = "cube" | "sphere" | "cone";
 
 interface ConfigurationPanelProps {
@@ -30,6 +31,8 @@ interface ConfigurationPanelProps {
   onConfigChange: (config: { wormholeSpeed?: number; distance?: number }) => void;
   initialSpeed: number;
   initialDistance: number;
+  wormholeExit: { x: number; z: number };
+  onWormholeExitChange: (position: { x: number; z: number }) => void;
 }
 
 export function ConfigurationPanel({ 
@@ -39,7 +42,9 @@ export function ConfigurationPanel({
   onAddWormhole,
   onConfigChange, 
   initialSpeed, 
-  initialDistance 
+  initialDistance,
+  wormholeExit,
+  onWormholeExitChange
 }: ConfigurationPanelProps) {
   const handleSpeedChange = (newSpeed: number[]) => {
     onConfigChange({ wormholeSpeed: newSpeed[0] });
@@ -64,12 +69,12 @@ export function ConfigurationPanel({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="wormhole">Wormhole</SelectItem>
-                <SelectItem value="red-circle">Red Circle</SelectItem>
+                <SelectItem value="my-wormholes">My Wormholes</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <Accordion type="multiple" defaultValue={["item-1", "item-2", "item-3", "item-4", "item-5"]} className="w-full">
+          <Accordion type="multiple" defaultValue={["item-1", "item-2", "item-3", "item-4", "item-5", "item-6"]} className="w-full">
             <AccordionItem value="item-1">
               <AccordionTrigger>Camera Controls</AccordionTrigger>
               <AccordionContent className="space-y-4 pt-2">
@@ -79,7 +84,7 @@ export function ConfigurationPanel({
                     <Slider
                       id="camera-distance"
                       min={5}
-                      max={40}
+                      max={80}
                       step={1}
                       value={[initialDistance]}
                       onValueChange={handleDistanceChange}
@@ -138,6 +143,18 @@ export function ConfigurationPanel({
                   </AccordionContent>
                 </AccordionItem>
               </>
+            )}
+
+            {universeType === 'my-wormholes' && (
+              <AccordionItem value="item-6">
+                <AccordionTrigger>Wormhole Controls</AccordionTrigger>
+                <AccordionContent className="pt-4">
+                  <WormholeMinimap 
+                    exitPosition={wormholeExit}
+                    onPositionChange={onWormholeExitChange}
+                  />
+                </AccordionContent>
+              </AccordionItem>
             )}
 
             <AccordionItem value="item-5">

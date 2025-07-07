@@ -11,7 +11,7 @@ type PlacedWormhole = { id: number };
 
 const initialConfig = {
   wormholeSpeed: 1.0,
-  distance: 15,
+  distance: 25,
 };
 
 export default function Home() {
@@ -19,6 +19,7 @@ export default function Home() {
   const [geometries, setGeometries] = useState<Geometry[]>([]);
   const [universeType, setUniverseType] = useState<UniverseType>('wormhole');
   const [placedWormholes, setPlacedWormholes] = useState<PlacedWormhole[]>([]);
+  const [wormholeExit, setWormholeExit] = useState({ x: 20, z: 20 });
 
   const handleAddGeometry = (type: GeometryType) => {
     setGeometries(prev => [...prev, { id: Date.now(), type }]);
@@ -34,9 +35,14 @@ export default function Home() {
 
   const handleUniverseChange = useCallback((newUniverse: UniverseType) => {
     setUniverseType(newUniverse);
-    // Reset geometries and wormholes when changing universe
     setGeometries([]);
     setPlacedWormholes([]);
+    setWormholeExit({ x: 20, z: 20 });
+    setConfig(prev => ({...prev, distance: newUniverse === 'my-wormholes' ? 25 : 15}))
+  }, []);
+  
+  const handleWormholeExitChange = useCallback((position: { x: number; z: number }) => {
+    setWormholeExit(position);
   }, []);
 
   return (
@@ -49,6 +55,8 @@ export default function Home() {
         onConfigChange={handleConfigChange}
         initialSpeed={config.wormholeSpeed}
         initialDistance={config.distance}
+        wormholeExit={wormholeExit}
+        onWormholeExitChange={handleWormholeExitChange}
       />
       <SidebarInset>
         <UniverseCanvas 
@@ -57,6 +65,7 @@ export default function Home() {
           geometries={geometries}
           placedWormholes={placedWormholes}
           onConfigChange={handleConfigChange}
+          wormholeExit={wormholeExit}
         />
       </SidebarInset>
     </SidebarProvider>
