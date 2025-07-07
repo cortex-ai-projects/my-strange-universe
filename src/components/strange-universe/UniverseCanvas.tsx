@@ -93,7 +93,6 @@ const fieryGlowFragmentShader = `
 type ThrownObject = {
   mesh: THREE.Mesh;
   velocity: THREE.Vector3;
-  lifetime: number;
   canTeleport: boolean;
 };
 
@@ -210,11 +209,39 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
       scene.add(river);
 
       const mountainMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
-      for (let i = 0; i < 20; i++) {
+      const worldSize = 100;
+      const boundaryMargin = 5;
+      for (let i = 0; i < 40; i++) {
         const height = Math.random() * 20 + 5;
         const radius = Math.random() * 5 + 2;
         const mountain = new THREE.Mesh(new THREE.ConeGeometry(radius, height, 8), mountainMaterial);
-        mountain.position.set((Math.random() - 0.5) * 100, height / 2 - 0.1, (Math.random() - 0.5) * 100);
+        
+        const side = Math.floor(Math.random() * 4);
+        const positionOnEdge = (Math.random() - 0.5) * worldSize;
+        let x, z;
+
+        switch(side) {
+          case 0: // Top edge (+z)
+            x = positionOnEdge;
+            z = worldSize / 2 - Math.random() * boundaryMargin;
+            break;
+          case 1: // Bottom edge (-z)
+            x = positionOnEdge;
+            z = -worldSize / 2 + Math.random() * boundaryMargin;
+            break;
+          case 2: // Right edge (+x)
+            x = worldSize / 2 - Math.random() * boundaryMargin;
+            z = positionOnEdge;
+            break;
+          case 3: // Left edge (-x)
+            x = -worldSize / 2 + Math.random() * boundaryMargin;
+            z = positionOnEdge;
+            break;
+          default:
+            x = 0; z = 0;
+        }
+
+        mountain.position.set(x, height / 2 - 0.1, z);
         mountain.castShadow = true;
         scene.add(mountain);
       }
@@ -279,7 +306,7 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
         
         const velocity = direction.multiplyScalar(throwSpeed);
         scene.add(projectile);
-        thrownObjectsRef.current.push({ mesh: projectile, velocity, lifetime: 500, canTeleport: true });
+        thrownObjectsRef.current.push({ mesh: projectile, velocity, canTeleport: true });
       }
     };
     const handleKeyboardUp = (event: KeyboardEvent) => {
@@ -374,39 +401,41 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
           }
         }
 
-        const objectsToRemove: number[] = [];
-        thrownObjectsRef.current.forEach((obj, index) => {
+        const gravity = new THREE.Vector3(0, -0.01, 0);
+        const groundLevel = 0.3; // Projectile radius
+
+        thrownObjectsRef.current.forEach((obj) => {
+          if (obj.mesh.position.y > groundLevel) {
+            obj.velocity.add(gravity);
+          }
+          
           obj.mesh.position.add(obj.velocity);
-          obj.lifetime--;
 
-          if (obj.lifetime <= 0) {
-            objectsToRemove.push(index);
-            scene.remove(obj.mesh);
-            obj.mesh.geometry.dispose();
-            (obj.mesh.material as THREE.Material).dispose();
+          if (obj.mesh.position.y < groundLevel) {
+            obj.mesh.position.y = groundLevel;
+            obj.velocity.x *= 0.8; // Friction
+            obj.velocity.z *= 0.8; // Friction
+            obj.velocity.y = 0; // Stop vertical bounce
+          }
+          
+          const distToEntrance = obj.mesh.position.distanceTo(entrancePosition);
+          const distToExit = obj.mesh.position.distanceTo(exitPosition);
+
+          if (obj.canTeleport) {
+            if (distToEntrance < teleportThreshold) {
+              obj.mesh.position.copy(exitPosition).add(obj.velocity);
+              obj.canTeleport = false;
+            } else if (distToExit < teleportThreshold) {
+              obj.mesh.position.copy(entrancePosition).add(obj.velocity);
+              obj.canTeleport = false;
+            }
           } else {
-            const distToEntrance = obj.mesh.position.distanceTo(entrancePosition);
-            const distToExit = obj.mesh.position.distanceTo(exitPosition);
-
-            if (obj.canTeleport) {
-              if (distToEntrance < teleportThreshold) {
-                obj.mesh.position.copy(exitPosition);
-                obj.canTeleport = false;
-              } else if (distToExit < teleportThreshold) {
-                obj.mesh.position.copy(entrancePosition);
-                obj.canTeleport = false;
-              }
-            } else {
-              if (distToEntrance > teleportThreshold + 1 && distToExit > teleportThreshold + 1) {
-                obj.canTeleport = true;
-              }
+            if (distToEntrance > teleportThreshold + 1 && distToExit > teleportThreshold + 1) {
+              obj.canTeleport = true;
             }
           }
         });
 
-        for (let i = objectsToRemove.length - 1; i >= 0; i--) {
-          thrownObjectsRef.current.splice(objectsToRemove[i], 1);
-        }
 
         controls.rotation.x = THREE.MathUtils.clamp(controls.rotation.x, -Math.PI / 3, Math.PI / 2.5);
         const lookAtPoint = characterPosition.current;
