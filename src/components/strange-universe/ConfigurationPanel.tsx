@@ -5,23 +5,42 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
   SidebarGroup,
 } from "@/components/ui/sidebar";
-import { Box, Cone } from "lucide-react";
+import { Box, Cone, Circle, GitCommitHorizontal } from "lucide-react";
 
+export type UniverseType = "wormhole" | "red-circle";
 type GeometryType = "cube" | "sphere" | "cone";
 
 interface ConfigurationPanelProps {
+  universeType: UniverseType;
+  onUniverseChange: (type: UniverseType) => void;
   onAddGeometry: (type: GeometryType) => void;
+  onAddWormhole: () => void;
   onConfigChange: (config: { wormholeSpeed?: number; distance?: number }) => void;
   initialSpeed: number;
   initialDistance: number;
 }
 
-export function ConfigurationPanel({ onAddGeometry, onConfigChange, initialSpeed, initialDistance }: ConfigurationPanelProps) {
+export function ConfigurationPanel({ 
+  universeType,
+  onUniverseChange,
+  onAddGeometry, 
+  onAddWormhole,
+  onConfigChange, 
+  initialSpeed, 
+  initialDistance 
+}: ConfigurationPanelProps) {
   const handleSpeedChange = (newSpeed: number[]) => {
     onConfigChange({ wormholeSpeed: newSpeed[0] });
   };
@@ -37,24 +56,23 @@ export function ConfigurationPanel({ onAddGeometry, onConfigChange, initialSpeed
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <Accordion type="multiple" defaultValue={["item-1", "item-2", "item-3"]} className="w-full">
+          <div className="space-y-2 mb-4">
+            <Label htmlFor="universe-type">Universe Type</Label>
+            <Select onValueChange={(value: UniverseType) => onUniverseChange(value)} value={universeType}>
+              <SelectTrigger id="universe-type">
+                <SelectValue placeholder="Select a universe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="wormhole">Wormhole</SelectItem>
+                <SelectItem value="red-circle">Red Circle</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Accordion type="multiple" defaultValue={["item-1", "item-2", "item-3", "item-4", "item-5"]} className="w-full">
             <AccordionItem value="item-1">
-              <AccordionTrigger>Universe Controls</AccordionTrigger>
+              <AccordionTrigger>Camera Controls</AccordionTrigger>
               <AccordionContent className="space-y-4 pt-2">
-                <div className="space-y-2">
-                  <Label htmlFor="wormhole-speed">Wormhole Speed</Label>
-                  <div className="flex items-center gap-4">
-                    <Slider
-                      id="wormhole-speed"
-                      min={0.1}
-                      max={2}
-                      step={0.1}
-                      value={[initialSpeed]}
-                      onValueChange={handleSpeedChange}
-                    />
-                    <span className="text-sm text-muted-foreground w-8 text-center">{initialSpeed.toFixed(1)}</span>
-                  </div>
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="camera-distance">Camera Distance</Label>
                   <div className="flex items-center gap-4">
@@ -71,23 +89,58 @@ export function ConfigurationPanel({ onAddGeometry, onConfigChange, initialSpeed
                 </div>
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="item-2">
-              <AccordionTrigger>Add Geometry</AccordionTrigger>
-              <AccordionContent className="space-y-2 pt-4">
-                <Button onClick={() => onAddGeometry("cube")} className="w-full justify-start" variant="ghost">
-                  <Box className="mr-2 h-4 w-4" />
-                  Add Cube
-                </Button>
-                <Button onClick={() => onAddGeometry("sphere")} className="w-full justify-start" variant="ghost">
-                  Add Sphere
-                </Button>
-                <Button onClick={() => onAddGeometry("cone")} className="w-full justify-start" variant="ghost">
-                  <Cone className="mr-2 h-4 w-4" />
-                  Add Cone
-                </Button>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="item-3">
+            
+            {universeType === 'wormhole' && (
+              <>
+                <AccordionItem value="item-2">
+                  <AccordionTrigger>Universe Controls</AccordionTrigger>
+                  <AccordionContent className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="wormhole-speed">Wormhole Speed</Label>
+                      <div className="flex items-center gap-4">
+                        <Slider
+                          id="wormhole-speed"
+                          min={0.1}
+                          max={2}
+                          step={0.1}
+                          value={[initialSpeed]}
+                          onValueChange={handleSpeedChange}
+                        />
+                        <span className="text-sm text-muted-foreground w-8 text-center">{initialSpeed.toFixed(1)}</span>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="item-3">
+                  <AccordionTrigger>Add Geometry</AccordionTrigger>
+                  <AccordionContent className="space-y-2 pt-4">
+                    <Button onClick={() => onAddGeometry("cube")} className="w-full justify-start" variant="ghost">
+                      <Box className="mr-2 h-4 w-4" />
+                      Add Cube
+                    </Button>
+                    <Button onClick={() => onAddGeometry("sphere")} className="w-full justify-start" variant="ghost">
+                      <Circle className="mr-2 h-4 w-4" />
+                      Add Sphere
+                    </Button>
+                    <Button onClick={() => onAddGeometry("cone")} className="w-full justify-start" variant="ghost">
+                      <Cone className="mr-2 h-4 w-4" />
+                      Add Cone
+                    </Button>
+                  </AccordionContent>
+                </AccordionItem>
+                 <AccordionItem value="item-4">
+                  <AccordionTrigger>Add Wormhole</AccordionTrigger>
+                  <AccordionContent className="space-y-2 pt-4">
+                    <Button onClick={onAddWormhole} className="w-full justify-start" variant="ghost">
+                      <GitCommitHorizontal className="mr-2 h-4 w-4" />
+                      Add Wormhole Entrance
+                    </Button>
+                  </AccordionContent>
+                </AccordionItem>
+              </>
+            )}
+
+            <AccordionItem value="item-5">
               <AccordionTrigger>Code Example</AccordionTrigger>
               <AccordionContent className="pt-2">
                 <p className="text-sm text-muted-foreground pb-2">Create a custom object:</p>

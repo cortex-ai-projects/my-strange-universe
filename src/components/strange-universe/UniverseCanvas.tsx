@@ -2,13 +2,16 @@
 
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { UniverseType } from './ConfigurationPanel';
 
 interface UniverseCanvasProps {
+  universeType: UniverseType;
   config: {
     wormholeSpeed: number;
     distance: number;
   };
   geometries: { id: number; type: 'cube' | 'sphere' | 'cone' }[];
+  placedWormholes: { id: number }[];
   onConfigChange: (config: { distance: number }) => void;
 }
 
@@ -36,37 +39,30 @@ const wormholeFragmentShader = `
   }
 `;
 
-export function UniverseCanvas({ config, geometries, onConfigChange }: UniverseCanvasProps) {
+export function UniverseCanvas({ universeType, config, geometries, placedWormholes, onConfigChange }: UniverseCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<THREE.Scene | null>(null);
   const geometriesRef = useRef<THREE.Group>(new THREE.Group());
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const controlsRef = useRef({
-    isDragging: false,
-    previousMousePosition: { x: 0, y: 0 },
-    rotation: { x: 0, y: 0 },
-  });
-
+  const placedWormholesRef = useRef<THREE.Group>(new THREE.Group());
+  
   const configRef = useRef(config);
-  useEffect(() => {
-    configRef.current = config;
-  }, [config]);
-
+  useEffect(() => { configRef.current = config; }, [config]);
+  
   const onConfigChangeRef = useRef(onConfigChange);
-  useEffect(() => {
-    onConfigChangeRef.current = onConfigChange;
-  }, [onConfigChange]);
-
+  useEffect(() => { onConfigChangeRef.current = onConfigChange; }, [onConfigChange]);
 
   useEffect(() => {
-    if (!mountRef.current || rendererRef.current) return;
+    if (!mountRef.current) return;
     const mount = mountRef.current;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    rendererRef.current = renderer;
     const scene = new THREE.Scene();
-    sceneRef.current = scene;
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+    
+    const controls = {
+      isDragging: false,
+      previousMousePosition: { x: 0, y: 0 },
+      rotation: { x: 0, y: 0 },
+    };
 
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -78,7 +74,7 @@ export function UniverseCanvas({ config, geometries, onConfigChange }: UniverseC
     pointLight.position.set(0, 0, 15);
     scene.add(pointLight);
 
-    const starVertices = [];
+    const starVertices: number[] = [];
     for (let i = 0; i < 15000; i++) {
       const x = (Math.random() - 0.5) * 2000;
       const y = (Math.random() - 0.5) * 2000;
@@ -91,53 +87,57 @@ export function UniverseCanvas({ config, geometries, onConfigChange }: UniverseC
     const stars = new THREE.Points(starGeometry, starMaterial);
     scene.add(stars);
 
-    const path = new THREE.CatmullRomCurve3(Array.from({ length: 5 }, (_, i) => 
-        new THREE.Vector3(Math.sin(i * 1.5) * 15, Math.cos(i) * 10, i * 15 - 30)
-    ), true, 'catmullrom', 0.5);
+    let wormholeMaterial: THREE.ShaderMaterial | null = null;
+    if (universeType === 'wormhole') {
+      const path = new THREE.CatmullRomCurve3(Array.from({ length: 5 }, (_, i) => 
+          new THREE.Vector3(Math.sin(i * 1.5) * 15, Math.cos(i) * 10, i * 15 - 30)
+      ), true, 'catmullrom', 0.5);
+      
+      const tubeGeometry = new THREE.TubeGeometry(path, 100, 3, 16, false);
+      wormholeMaterial = new THREE.ShaderMaterial({
+        vertexShader: wormholeVertexShader,
+        fragmentShader: wormholeFragmentShader,
+        uniforms: {
+          uTime: { value: 0 },
+          uSpeed: { value: configRef.current.wormholeSpeed },
+          uColor: { value: new THREE.Color(0xBF00FF) },
+        },
+        side: THREE.BackSide,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+      });
+      const wormhole = new THREE.Mesh(tubeGeometry, wormholeMaterial);
+      scene.add(wormhole);
+      scene.add(geometriesRef.current);
+      scene.add(placedWormholesRef.current);
+    } else if (universeType === 'red-circle') {
+      const circleGeometry = new THREE.TorusGeometry(5, 0.1, 16, 100);
+      const circleMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, toneMapped: false });
+      const circle = new THREE.Mesh(circleGeometry, circleMaterial);
+      circle.name = "red-circle";
+      camera.add(circle);
+      circle.position.z = -10;
+      scene.add(camera);
+    }
     
-    const tubeGeometry = new THREE.TubeGeometry(path, 100, 3, 16, false);
-    const wormholeMaterial = new THREE.ShaderMaterial({
-      vertexShader: wormholeVertexShader,
-      fragmentShader: wormholeFragmentShader,
-      uniforms: {
-        uTime: { value: 0 },
-        uSpeed: { value: configRef.current.wormholeSpeed },
-        uColor: { value: new THREE.Color(0xBF00FF) },
-      },
-      side: THREE.BackSide,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-    });
-    const wormhole = new THREE.Mesh(tubeGeometry, wormholeMaterial);
-    scene.add(wormhole);
-
-    scene.add(geometriesRef.current);
-
     const handleMouseDown = (event: MouseEvent) => {
       event.preventDefault();
-      controlsRef.current.isDragging = true;
-      controlsRef.current.previousMousePosition = { x: event.clientX, y: event.clientY };
+      controls.isDragging = true;
+      controls.previousMousePosition = { x: event.clientX, y: event.clientY };
     };
-
-    const handleMouseUp = (event: MouseEvent) => {
-      controlsRef.current.isDragging = false;
+    const handleMouseUp = () => {
+      controls.isDragging = false;
     };
-
     const handleMouseMove = (event: MouseEvent) => {
-      if (!controlsRef.current.isDragging) return;
+      if (!controls.isDragging) return;
       event.preventDefault();
-
-      const deltaX = event.clientX - controlsRef.current.previousMousePosition.x;
-      const deltaY = event.clientY - controlsRef.current.previousMousePosition.y;
-
-      controlsRef.current.rotation.y += deltaX * 0.005;
-      controlsRef.current.rotation.x -= deltaY * 0.005;
-
-      controlsRef.current.rotation.x = THREE.MathUtils.clamp(controlsRef.current.rotation.x, -Math.PI / 2 + 0.1, Math.PI / 2 - 0.1);
-
-      controlsRef.current.previousMousePosition = { x: event.clientX, y: event.clientY };
+      const deltaX = event.clientX - controls.previousMousePosition.x;
+      const deltaY = event.clientY - controls.previousMousePosition.y;
+      controls.rotation.y += deltaX * 0.005;
+      controls.rotation.x -= deltaY * 0.005;
+      controls.rotation.x = THREE.MathUtils.clamp(controls.rotation.x, -Math.PI / 2 + 0.1, Math.PI / 2 - 0.1);
+      controls.previousMousePosition = { x: event.clientX, y: event.clientY };
     };
-
     const handleWheel = (event: WheelEvent) => {
       event.preventDefault();
       let newDistance = configRef.current.distance + event.deltaY * 0.02;
@@ -149,7 +149,6 @@ export function UniverseCanvas({ config, geometries, onConfigChange }: UniverseC
     window.addEventListener('mouseup', handleMouseUp);
     mount.addEventListener('mousemove', handleMouseMove);
     mount.addEventListener('wheel', handleWheel, { passive: false });
-
 
     const handleResize = () => {
       if (!mountRef.current) return;
@@ -163,65 +162,73 @@ export function UniverseCanvas({ config, geometries, onConfigChange }: UniverseC
     handleResize();
 
     const clock = new THREE.Clock();
+    let animationFrameId: number;
     const animate = () => {
-      if(!rendererRef.current) return;
-      requestAnimationFrame(animate);
+      animationFrameId = requestAnimationFrame(animate);
       const elapsedTime = clock.getElapsedTime();
       
-      const { rotation } = controlsRef.current;
-      const { distance } = configRef.current;
+      const { rotation } = controls;
+      const { distance, wormholeSpeed } = configRef.current;
       camera.position.x = distance * Math.sin(rotation.y) * Math.cos(rotation.x);
       camera.position.y = distance * Math.sin(rotation.x);
       camera.position.z = distance * Math.cos(rotation.y) * Math.cos(rotation.x);
       camera.lookAt(scene.position);
 
-      wormholeMaterial.uniforms.uTime.value = elapsedTime;
-      
-      geometriesRef.current.children.forEach((child, i) => {
-        child.rotation.x += 0.002 + i * 0.0001;
-        child.rotation.y += 0.002 + i * 0.0001;
-      });
-
       stars.rotation.y = elapsedTime * 0.01;
+      
+      if(universeType === 'wormhole' && wormholeMaterial) {
+          wormholeMaterial.uniforms.uTime.value = elapsedTime;
+          wormholeMaterial.uniforms.uSpeed.value = wormholeSpeed;
+          geometriesRef.current.children.forEach((child, i) => {
+              child.rotation.x += 0.002 + i * 0.0001;
+              child.rotation.y += 0.002 + i * 0.0001;
+          });
+      } else if (universeType === 'red-circle') {
+          const circle = camera.getObjectByName('red-circle');
+          if(circle) {
+              const scale = 1.0 + Math.sin(elapsedTime * 2) * 0.1;
+              circle.scale.set(scale, scale, scale);
+          }
+      }
 
       renderer.render(scene, camera);
     };
     animate();
 
     return () => {
+      cancelAnimationFrame(animationFrameId);
       mount.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseup', handleMouseUp);
       mount.removeEventListener('mousemove', handleMouseMove);
       mount.removeEventListener('wheel', handleWheel);
-      if(mount) {
-        resizeObserver.unobserve(mount);
-        if (renderer.domElement.parentElement === mount) {
-          mount.removeChild(renderer.domElement);
-        }
+      resizeObserver.unobserve(mount);
+      if (renderer.domElement.parentElement === mount) {
+        mount.removeChild(renderer.domElement);
       }
+      scene.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          object.geometry.dispose();
+          const material = object.material as THREE.Material | THREE.Material[];
+          if(Array.isArray(material)) {
+            material.forEach(m => m.dispose());
+          } else {
+            material.dispose();
+          }
+        }
+      });
+      scene.clear();
       renderer.dispose();
-      rendererRef.current = null;
     };
-  }, []);
+  }, [universeType]);
 
+  // Manage geometries
   useEffect(() => {
-    const scene = sceneRef.current;
-    if (!scene) return;
-    
-    const wormhole = scene.children.find(child => child instanceof THREE.Mesh && child.geometry instanceof THREE.TubeGeometry) as THREE.Mesh<THREE.TubeGeometry, THREE.ShaderMaterial> | undefined;
-    if(wormhole) {
-      wormhole.material.uniforms.uSpeed.value = config.wormholeSpeed;
+    if (universeType !== 'wormhole') {
+      geometriesRef.current.clear(); // Clear geometries when not in wormhole universe
+      return;
     }
-  }, [config.wormholeSpeed]);
-
-  useEffect(() => {
     const group = geometriesRef.current;
-    if (!group) return;
-
-    const existingIds = group.children.map(c => c.uuid);
-    const newIds = geometries.map(g => g.id.toString());
     
-    // Naive diffing for simplicity
     const currentMeshes = new Map(group.children.map(c => [c.userData.id, c]));
     const geometriesMap = new Map(geometries.map(g => [g.id, g]));
 
@@ -253,7 +260,43 @@ export function UniverseCanvas({ config, geometries, onConfigChange }: UniverseC
       }
     })
 
-  }, [geometries]);
+  }, [geometries, universeType]);
+
+  // Manage placed wormholes
+  useEffect(() => {
+    if (universeType !== 'wormhole') {
+      placedWormholesRef.current.clear(); // Clear wormholes when not in wormhole universe
+      return;
+    }
+    const group = placedWormholesRef.current;
+    
+    const currentMeshes = new Map(group.children.map(c => [c.userData.id, c]));
+    const newItemsMap = new Map(placedWormholes.map(g => [g.id, g]));
+
+    currentMeshes.forEach((mesh, id) => {
+      if(!newItemsMap.has(id)) {
+        group.remove(mesh);
+      }
+    });
+
+    newItemsMap.forEach((item, id) => {
+      if(!currentMeshes.has(id)){
+        const geometry = new THREE.TorusGeometry(1.5, 0.2, 16, 100);
+        const material = new THREE.MeshStandardMaterial({
+          color: 0xBF00FF, metalness: 0.8, roughness: 0.2, emissive: 0xBF00FF, emissiveIntensity: 0.3
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.userData.id = id;
+        
+        mesh.position.set(
+          (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 40 - 20
+        );
+        mesh.rotation.x = Math.random() * Math.PI;
+        mesh.rotation.y = Math.random() * Math.PI;
+        group.add(mesh);
+      }
+    });
+  }, [placedWormholes, universeType]);
 
 
   return <div ref={mountRef} className="absolute inset-0 w-full h-full" />;
