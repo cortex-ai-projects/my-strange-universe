@@ -125,7 +125,7 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
     if (!mountRef.current) return;
     const mount = mountRef.current;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
     
@@ -197,7 +197,7 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
       scene.add(dirLight);
 
       const groundGeometry = new THREE.PlaneGeometry(100, 100);
-      const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x669966 });
+      const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x99cc66 });
       const ground = new THREE.Mesh(groundGeometry, groundMaterial);
       ground.rotation.x = -Math.PI / 2;
       ground.receiveShadow = true;
@@ -206,10 +206,12 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
       // Character Model
       characterRef.current = new THREE.Group();
       scene.add(characterRef.current);
+      
+      const blueShirtMaterial = new THREE.MeshStandardMaterial({ color: 0x0066ff });
 
       const torso = new THREE.Mesh(
         new THREE.CylinderGeometry(0.3, 0.3, 0.8, 16),
-        new THREE.MeshStandardMaterial({ color: 0x0066ff }) // Blue shirt
+        blueShirtMaterial
       );
       torso.position.y = 1.2;
       torso.castShadow = true;
@@ -229,6 +231,62 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
       );
       hair.position.y = 1.8;
       characterRef.current.add(hair);
+      
+      const legMaterial = new THREE.MeshStandardMaterial({ color: 0x222266 }); // Dark blue pants
+      const leftLeg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.15, 0.1, 0.8, 16),
+        legMaterial
+      );
+      leftLeg.position.set(-0.15, 0.4, 0);
+      leftLeg.castShadow = true;
+      characterRef.current.add(leftLeg);
+
+      const rightLeg = leftLeg.clone();
+      rightLeg.position.set(0.15, 0.4, 0);
+      characterRef.current.add(rightLeg);
+
+      const arm = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.1, 0.08, 0.7, 16),
+        blueShirtMaterial
+      );
+      arm.castShadow = true;
+      
+      const leftArm = arm.clone();
+      leftArm.position.set(-0.4, 1.2, 0);
+      leftArm.rotation.z = Math.PI / 8; // Slightly angled out
+      characterRef.current.add(leftArm);
+
+      const rightArm = arm.clone();
+      rightArm.position.set(0.4, 1.2, 0);
+      rightArm.rotation.z = -Math.PI / 8;
+      characterRef.current.add(rightArm);
+      
+      // Propeller Hat
+      const hatBase = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.15, 0.15, 0.1, 16),
+          new THREE.MeshStandardMaterial({ color: 0xffdd00 }) // Yellow
+      );
+      hatBase.position.y = 2.05;
+      hatBase.castShadow = true;
+      characterRef.current.add(hatBase);
+
+      const hatStem = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.02, 0.02, 0.1, 8),
+          new THREE.MeshStandardMaterial({ color: 0x999999 }) // Grey
+      );
+      hatStem.position.y = 2.15;
+      hatStem.castShadow = true;
+      characterRef.current.add(hatStem);
+
+      const propeller = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.4, 0.08),
+          new THREE.MeshStandardMaterial({ color: 0xff0000, side: THREE.DoubleSide }) // Red
+      );
+      propeller.name = 'propeller';
+      propeller.position.y = 2.2;
+      propeller.castShadow = true;
+      characterRef.current.add(propeller);
+
 
       const riverGeometry = new THREE.BoxGeometry(100, 0.2, 5);
       const riverMaterial = new THREE.MeshPhongMaterial({ color: 0x3366AA, shininess: 100 });
@@ -543,6 +601,11 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
         if (characterRef.current) {
           characterRef.current.position.copy(characterPosition.current);
           characterRef.current.rotation.y = rotation.y + Math.PI;
+
+          const propeller = characterRef.current.getObjectByName('propeller');
+          if (propeller) {
+              propeller.rotation.y += 0.3;
+          }
         }
 
         // Update camera
@@ -556,6 +619,7 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
         );
 
         camera.position.copy(lookAtPoint).add(offset);
+        camera.position.y = Math.max(camera.position.y, 1.0); // Prevent camera from going under terrain
         camera.lookAt(lookAtPoint);
 
         if(wormholeExitObjectRef.current && wormholeExitLightRef.current) {
