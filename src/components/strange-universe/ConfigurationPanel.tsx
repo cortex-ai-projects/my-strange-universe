@@ -11,7 +11,7 @@ import {
   SidebarHeader,
   SidebarGroup,
 } from "@/components/ui/sidebar";
-import { Box, Cone, Sphere } from "lucide-react";
+import { Box, Cone } from "lucide-react";
 
 type GeometryType = "cube" | "sphere" | "cone";
 
@@ -64,7 +64,6 @@ export function ConfigurationPanel({ onAddGeometry, onConfigChange, initialSpeed
                   Add Cube
                 </Button>
                 <Button onClick={() => onAddGeometry("sphere")} className="w-full justify-start" variant="ghost">
-                  <Sphere className="mr-2 h-4 w-4" />
                   Add Sphere
                 </Button>
                 <Button onClick={() => onAddGeometry("cone")} className="w-full justify-start" variant="ghost">

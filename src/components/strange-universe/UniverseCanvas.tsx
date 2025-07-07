@@ -38,22 +38,27 @@ export function UniverseCanvas({ config, geometries }: UniverseCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const geometriesRef = useRef<THREE.Group>(new THREE.Group());
-  const mousePosRef = useRef({ x: 0, y: 0 });
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const controlsRef = useRef({
+    isDragging: false,
+    previousMousePosition: { x: 0, y: 0 },
+    rotation: { x: 0, y: 0 },
+    distance: 15,
+  });
 
   useEffect(() => {
     if (!mountRef.current || rendererRef.current) return;
+    const mount = mountRef.current;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     rendererRef.current = renderer;
     const scene = new THREE.Scene();
     sceneRef.current = scene;
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-    camera.position.z = 10;
 
-    renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
-    mountRef.current.appendChild(renderer.domElement);
+    mount.appendChild(renderer.domElement);
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
     scene.add(ambientLight);
@@ -96,21 +101,52 @@ export function UniverseCanvas({ config, geometries }: UniverseCanvasProps) {
 
     scene.add(geometriesRef.current);
 
-    const handleMouseMove = (event: MouseEvent) => {
-      mousePosRef.current.x = (event.clientX / window.innerWidth) * 2 - 1;
-      mousePosRef.current.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    const handleMouseDown = (event: MouseEvent) => {
+      event.preventDefault();
+      controlsRef.current.isDragging = true;
+      controlsRef.current.previousMousePosition = { x: event.clientX, y: event.clientY };
     };
-    window.addEventListener('mousemove', handleMouseMove);
+
+    const handleMouseUp = (event: MouseEvent) => {
+      controlsRef.current.isDragging = false;
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!controlsRef.current.isDragging) return;
+      event.preventDefault();
+
+      const deltaX = event.clientX - controlsRef.current.previousMousePosition.x;
+      const deltaY = event.clientY - controlsRef.current.previousMousePosition.y;
+
+      controlsRef.current.rotation.y += deltaX * 0.005;
+      controlsRef.current.rotation.x -= deltaY * 0.005;
+
+      controlsRef.current.rotation.x = THREE.MathUtils.clamp(controlsRef.current.rotation.x, -Math.PI / 2 + 0.1, Math.PI / 2 - 0.1);
+
+      controlsRef.current.previousMousePosition = { x: event.clientX, y: event.clientY };
+    };
+
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      controlsRef.current.distance += event.deltaY * 0.02;
+      controlsRef.current.distance = THREE.MathUtils.clamp(controlsRef.current.distance, 5, 40);
+    };
+
+    mount.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mouseup', handleMouseUp);
+    mount.addEventListener('mousemove', handleMouseMove);
+    mount.addEventListener('wheel', handleWheel, { passive: false });
+
 
     const handleResize = () => {
       if (!mountRef.current) return;
-      const { clientWidth, clientHeight } = mountRef.current;
+      const { clientWidth, clientHeight } = mount;
       camera.aspect = clientWidth / clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(clientWidth, clientHeight);
     };
     const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(mountRef.current);
+    resizeObserver.observe(mount);
     handleResize();
 
     const clock = new THREE.Clock();
@@ -118,11 +154,15 @@ export function UniverseCanvas({ config, geometries }: UniverseCanvasProps) {
       if(!rendererRef.current) return;
       requestAnimationFrame(animate);
       const elapsedTime = clock.getElapsedTime();
+      
+      const { rotation, distance } = controlsRef.current;
+      camera.position.x = distance * Math.sin(rotation.y) * Math.cos(rotation.x);
+      camera.position.y = distance * Math.sin(rotation.x);
+      camera.position.z = distance * Math.cos(rotation.y) * Math.cos(rotation.x);
+      camera.lookAt(scene.position);
+
       wormholeMaterial.uniforms.uTime.value = elapsedTime;
       
-      camera.rotation.y = THREE.MathUtils.lerp(camera.rotation.y, mousePosRef.current.x * Math.PI * 0.05, 0.05);
-      camera.rotation.x = THREE.MathUtils.lerp(camera.rotation.x, mousePosRef.current.y * Math.PI * 0.05, 0.05);
-
       geometriesRef.current.children.forEach((child, i) => {
         child.rotation.x += 0.002 + i * 0.0001;
         child.rotation.y += 0.002 + i * 0.0001;
@@ -135,10 +175,15 @@ export function UniverseCanvas({ config, geometries }: UniverseCanvasProps) {
     animate();
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      if(mountRef.current) {
-        resizeObserver.unobserve(mountRef.current);
-        mountRef.current.removeChild(renderer.domElement);
+      mount.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
+      mount.removeEventListener('mousemove', handleMouseMove);
+      mount.removeEventListener('wheel', handleWheel);
+      if(mount) {
+        resizeObserver.unobserve(mount);
+        if (renderer.domElement.parentElement === mount) {
+          mount.removeChild(renderer.domElement);
+        }
       }
       renderer.dispose();
       rendererRef.current = null;
