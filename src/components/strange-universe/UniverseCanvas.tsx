@@ -15,7 +15,6 @@ interface UniverseCanvasProps {
   geometries: { id: number; type: 'cube' | 'sphere' | 'cone' }[];
   placedWormholes: { id: number }[];
   onConfigChange: (config: { distance: number }) => void;
-  wormholeExit: { x: number, z: number };
 }
 
 const wormholeVertexShader = `
@@ -42,68 +41,19 @@ const wormholeFragmentShader = `
   }
 `;
 
-const fieryGlowVertexShader = `
-  varying vec3 vNormal;
-  void main() {
-    vNormal = normalize(normalMatrix * normal);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
-
-const fieryGlowFragmentShader = `
-  uniform float uTime;
-  uniform vec3 uColor;
-  varying vec2 vUv;
-  varying vec3 vNormal;
-
-  // Simple pseudo-random function
-  float rand(vec2 n) { 
-    return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453);
-  }
-
-  // Noise function
-  float noise(vec2 p){
-    vec2 ip = floor(p);
-    vec2 u = fract(p);
-    u = u*u*(3.0-2.0*u);
-    
-    float res = mix(
-      mix(rand(ip),rand(ip+vec2(1.0,0.0)),u.x),
-      mix(rand(ip+vec2(0.0,1.0)),rand(ip+vec2(1.0,1.0)),u.x),u.y);
-    return res*res;
-  }
-
-  void main() {
-    float time = uTime * 0.5;
-    
-    // Animate noise
-    float motion = noise(vNormal.xy * 4.0 + time);
-    motion += noise(vNormal.xy * 8.0 + time * 0.5) * 0.5;
-
-    // Rim effect
-    float rim = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 2.0);
-    
-    // Combine for fire effect
-    vec3 fireColor = uColor * rim * (0.5 + motion * 1.5);
-
-    // Make it transparent
-    gl_FragColor = vec4(fireColor, (rim + motion) * 0.8);
-  }
-`;
-
 type ThrownObject = {
   mesh: THREE.Mesh;
   velocity: THREE.Vector3;
   canTeleport: boolean;
 };
 
-export function UniverseCanvas({ universeType, config, geometries, placedWormholes, onConfigChange, wormholeExit }: UniverseCanvasProps) {
+export function UniverseCanvas({ universeType, config, geometries, placedWormholes, onConfigChange }: UniverseCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const geometriesRef = useRef<THREE.Group>(new THREE.Group());
   const placedWormholesRef = useRef<THREE.Group>(new THREE.Group());
   const thrownObjectsRef = useRef<ThrownObject[]>([]);
-  const wormholeExitObjectRef = useRef<THREE.Mesh>();
-  const wormholeExitLightRef = useRef<THREE.PointLight>();
+  const entrancePortalRef = useRef<THREE.Mesh | null>(null);
+  const exitPortalRef = useRef<THREE.Mesh | null>(null);
   const characterRef = useRef<THREE.Group>();
   const characterPosition = useRef(new THREE.Vector3(0, 0, 5));
   const keysPressed = useRef<{ [key: string]: boolean }>({});
@@ -111,14 +61,9 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
   const configRef = useRef(config);
   useEffect(() => { configRef.current = config; }, [config]);
   
-  const wormholeExitPosRef = useRef(wormholeExit);
-  useEffect(() => { wormholeExitPosRef.current = wormholeExit; }, [wormholeExit]);
-
   const onConfigChangeRef = useRef(onConfigChange);
   useEffect(() => { onConfigChangeRef.current = onConfigChange; }, [onConfigChange]);
 
-  const entranceMaterialRef = useRef<THREE.ShaderMaterial>();
-  const exitMaterialRef = useRef<THREE.ShaderMaterial>();
   const teleportCooldown = useRef(false);
 
   useEffect(() => {
@@ -332,49 +277,11 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
         mountain.castShadow = true;
         scene.add(mountain);
       }
-      
-      entranceMaterialRef.current = new THREE.ShaderMaterial({
-        vertexShader: fieryGlowVertexShader,
-        fragmentShader: fieryGlowFragmentShader,
-        uniforms: {
-          uTime: { value: 0 },
-          uColor: { value: new THREE.Color(0xFF8C00) },
-        },
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-      });
-
-      const entrance = new THREE.Mesh(new THREE.TorusGeometry(3, 0.3, 16, 100), entranceMaterialRef.current);
-      entrance.position.set(0, 5, -25);
-      entrance.name = 'wormhole-entrance';
-      scene.add(entrance);
-      const entranceLight = new THREE.PointLight(0xFF8C00, 10, 30);
-      entranceLight.position.copy(entrance.position);
-      scene.add(entranceLight);
-      
-      exitMaterialRef.current = new THREE.ShaderMaterial({
-        vertexShader: fieryGlowVertexShader,
-        fragmentShader: fieryGlowFragmentShader,
-        uniforms: {
-          uTime: { value: 0 },
-          uColor: { value: new THREE.Color(0x00FFFF) },
-        },
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-      });
-
-      wormholeExitObjectRef.current = new THREE.Mesh(new THREE.TorusGeometry(3, 0.3, 16, 100), exitMaterialRef.current);
-      wormholeExitObjectRef.current.position.set(wormholeExitPosRef.current.x, 5, wormholeExitPosRef.current.z);
-      scene.add(wormholeExitObjectRef.current);
-      wormholeExitLightRef.current = new THREE.PointLight(0x00FFFF, 10, 30);
-      scene.add(wormholeExitLightRef.current);
     }
     
     const handleKeyboardDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      if (['w', 'a', 's', 'd', 'q', 'e', 'f'].includes(key)) {
+      if (['w', 'a', 's', 'd', 'q', 'e', 'f', 'p', 'o'].includes(key)) {
         event.preventDefault();
       }
       keysPressed.current[key] = true;
@@ -395,6 +302,40 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
         const velocity = direction.multiplyScalar(throwSpeed);
         scene.add(projectile);
         thrownObjectsRef.current.push({ mesh: projectile, velocity, canTeleport: true });
+      }
+
+      if ((key === 'p' || key === 'o') && universeType === 'my-wormholes' && characterRef.current) {
+        const isEntrance = key === 'p';
+        const portalColor = isEntrance ? 0x0000ff : 0xff0000;
+        const portalRef = isEntrance ? entrancePortalRef : exitPortalRef;
+        
+        if (portalRef.current) {
+            scene.remove(portalRef.current);
+            portalRef.current.geometry.dispose();
+            (portalRef.current.material as THREE.Material).dispose();
+        }
+    
+        const portalSize = 4;
+        const portalGeometry = new THREE.PlaneGeometry(portalSize, portalSize);
+        const portalMaterial = new THREE.MeshStandardMaterial({
+            color: portalColor,
+            side: THREE.DoubleSide,
+        });
+        const portal = new THREE.Mesh(portalGeometry, portalMaterial);
+        portal.castShadow = true;
+    
+        const direction = new THREE.Vector3();
+        characterRef.current.getWorldDirection(direction);
+        direction.multiplyScalar(-1); // Character model faces opposite direction of camera view
+    
+        const portalPosition = characterPosition.current.clone().add(direction.multiplyScalar(3));
+        portalPosition.y = portalSize / 2; // Place on ground
+        portal.position.copy(portalPosition);
+    
+        portal.rotation.copy(characterRef.current.rotation);
+        
+        scene.add(portal);
+        portalRef.current = portal;
       }
     };
     const handleKeyboardUp = (event: KeyboardEvent) => {
@@ -483,26 +424,60 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
         if (keysPressed.current['q']) controls.rotation.y -= rotateSpeed;
         if (keysPressed.current['e']) controls.rotation.y += rotateSpeed;
         
-        const entrancePosition = new THREE.Vector3(0, 5, -25);
-        const exitPosition = new THREE.Vector3(wormholeExitPosRef.current.x, 5, wormholeExitPosRef.current.z);
-        const teleportThreshold = 3.5;
+        const entrancePortal = entrancePortalRef.current;
+        const exitPortal = exitPortalRef.current;
 
-        // Character teleportation
-        const charHeadPos = characterPosition.current.clone().add(new THREE.Vector3(0,1.5,0));
-        if (!teleportCooldown.current) {
-          if (charHeadPos.distanceTo(entrancePosition) < teleportThreshold) {
-            characterPosition.current.set(exitPosition.x, characterPosition.current.y, exitPosition.z);
-            teleportCooldown.current = true;
-          } else if (charHeadPos.distanceTo(exitPosition) < teleportThreshold) {
-            characterPosition.current.set(entrancePosition.x, characterPosition.current.y, entrancePosition.z);
-            teleportCooldown.current = true;
+        if (entrancePortal && exitPortal) {
+          const entrancePosition = entrancePortal.position;
+          const exitPosition = exitPortal.position;
+          const teleportThreshold = 2.5;
+
+          // Character teleportation
+          const charHeadPos = characterPosition.current.clone().add(new THREE.Vector3(0,1.5,0));
+          if (!teleportCooldown.current) {
+            const teleportTo = (destination: THREE.Mesh) => {
+              const offset = new THREE.Vector3(0, 0, 1);
+              destination.localToWorld(offset);
+              offset.sub(destination.position).normalize();
+              characterPosition.current.copy(destination.position).add(offset.multiplyScalar(0.5));
+              teleportCooldown.current = true;
+            };
+
+            if (charHeadPos.distanceTo(entrancePosition) < teleportThreshold) {
+              teleportTo(exitPortal);
+            } else if (charHeadPos.distanceTo(exitPosition) < teleportThreshold) {
+              teleportTo(entrancePortal);
+            }
+          } else {
+            if (charHeadPos.distanceTo(entrancePosition) > teleportThreshold + 1 &&
+                charHeadPos.distanceTo(exitPosition) > teleportThreshold + 1) {
+              teleportCooldown.current = false;
+            }
           }
-        } else {
-          if (charHeadPos.distanceTo(entrancePosition) > teleportThreshold + 1 &&
-              charHeadPos.distanceTo(exitPosition) > teleportThreshold + 1) {
-            teleportCooldown.current = false;
-          }
+
+          // Thrown objects teleportation
+          thrownObjectsRef.current.forEach((obj) => {
+            if (obj.canTeleport) {
+              const teleportObjectTo = (destination: THREE.Mesh) => {
+                  const offset = new THREE.Vector3(0, 0, 1);
+                  destination.localToWorld(offset);
+                  offset.sub(destination.position).normalize();
+                  obj.mesh.position.copy(destination.position).add(offset.multiplyScalar(0.5));
+                  obj.canTeleport = false;
+              };
+              if (obj.mesh.position.distanceTo(entrancePosition) < teleportThreshold) {
+                  teleportObjectTo(exitPortal);
+              } else if (obj.mesh.position.distanceTo(exitPosition) < teleportThreshold) {
+                  teleportObjectTo(entrancePortal);
+              }
+            } else {
+              if (obj.mesh.position.distanceTo(entrancePosition) > teleportThreshold + 1 && obj.mesh.position.distanceTo(exitPosition) > teleportThreshold + 1) {
+                obj.canTeleport = true;
+              }
+            }
+          });
         }
+
 
         const gravity = new THREE.Vector3(0, -0.01, 0);
         const groundLevel = 0;
@@ -542,22 +517,6 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
             obj.velocity.y *= -0.3;
             if(Math.abs(obj.velocity.y) < 0.05) {
                 obj.velocity.y = 0;
-            }
-          }
-          
-          const distToEntrance = obj.mesh.position.distanceTo(entrancePosition);
-          const distToExit = obj.mesh.position.distanceTo(exitPosition);
-          if (obj.canTeleport) {
-            if (distToEntrance < teleportThreshold) {
-              obj.mesh.position.copy(exitPosition).add(obj.velocity);
-              obj.canTeleport = false;
-            } else if (distToExit < teleportThreshold) {
-              obj.mesh.position.copy(entrancePosition).add(obj.velocity);
-              obj.canTeleport = false;
-            }
-          } else {
-            if (distToEntrance > teleportThreshold + 1 && distToExit > teleportThreshold + 1) {
-              obj.canTeleport = true;
             }
           }
         });
@@ -621,15 +580,6 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
         camera.position.copy(lookAtPoint).add(offset);
         camera.position.y = Math.max(camera.position.y, 1.0); // Prevent camera from going under terrain
         camera.lookAt(lookAtPoint);
-
-        if(wormholeExitObjectRef.current && wormholeExitLightRef.current) {
-          const exitPos = new THREE.Vector3(wormholeExitPosRef.current.x, 5, wormholeExitPosRef.current.z);
-          wormholeExitObjectRef.current.position.copy(exitPos);
-          wormholeExitLightRef.current.position.copy(exitPos);
-        }
-        if (entranceMaterialRef.current) entranceMaterialRef.current.uniforms.uTime.value = elapsedTime;
-        if (exitMaterialRef.current) exitMaterialRef.current.uniforms.uTime.value = elapsedTime;
-
       } else {
         controls.rotation.x = THREE.MathUtils.clamp(controls.rotation.x, -Math.PI / 2 + 0.1, Math.PI / 2 - 0.1);
         camera.position.x = distance * Math.sin(rotation.y) * Math.cos(rotation.x);
@@ -669,6 +619,11 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
         (obj.mesh.material as THREE.Material).dispose();
       });
       thrownObjectsRef.current = [];
+      
+      if (entrancePortalRef.current) scene.remove(entrancePortalRef.current);
+      if (exitPortalRef.current) scene.remove(exitPortalRef.current);
+      entrancePortalRef.current = null;
+      exitPortalRef.current = null;
 
       if (renderer.domElement.parentElement === mount) {
         mount.removeChild(renderer.domElement);

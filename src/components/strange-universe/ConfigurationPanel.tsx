@@ -18,7 +18,6 @@ import {
   SidebarGroup,
 } from "@/components/ui/sidebar";
 import { Box, Cone, Circle, GitCommitHorizontal } from "lucide-react";
-import { WormholeMinimap } from "./WormholeMinimap";
 
 export type UniverseType = "wormhole" | "my-wormholes";
 type GeometryType = "cube" | "sphere" | "cone";
@@ -32,8 +31,6 @@ interface ConfigurationPanelProps {
   initialSpeed: number;
   initialDistance: number;
   initialBallSize: number;
-  wormholeExit: { x: number; z: number };
-  onWormholeExitChange: (position: { x: number; z: number }) => void;
 }
 
 export function ConfigurationPanel({ 
@@ -44,9 +41,7 @@ export function ConfigurationPanel({
   onConfigChange, 
   initialSpeed, 
   initialDistance,
-  initialBallSize,
-  wormholeExit,
-  onWormholeExitChange
+  initialBallSize
 }: ConfigurationPanelProps) {
   const handleSpeedChange = (newSpeed: number[]) => {
     onConfigChange({ wormholeSpeed: newSpeed[0] });
@@ -154,12 +149,13 @@ export function ConfigurationPanel({
             {universeType === 'my-wormholes' && (
               <>
                 <AccordionItem value="item-6">
-                  <AccordionTrigger>Wormhole Controls</AccordionTrigger>
-                  <AccordionContent className="pt-4">
-                    <WormholeMinimap 
-                      exitPosition={wormholeExit}
-                      onPositionChange={onWormholeExitChange}
-                    />
+                  <AccordionTrigger>Portal Controls</AccordionTrigger>
+                  <AccordionContent className="pt-4 text-sm text-muted-foreground">
+                    <p className="font-medium">Use keyboard to place portals:</p>
+                    <div className="mt-2 space-y-1">
+                      <div><code className="font-mono p-1 text-xs bg-muted rounded-sm">P</code> — Place Entrance Portal (Blue)</div>
+                      <div><code className="font-mono p-1 text-xs bg-muted rounded-sm">O</code> — Place Exit Portal (Red)</div>
+                    </div>
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="item-7">

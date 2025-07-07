@@ -20,7 +20,6 @@ export default function Home() {
   const [geometries, setGeometries] = useState<Geometry[]>([]);
   const [universeType, setUniverseType] = useState<UniverseType>('wormhole');
   const [placedWormholes, setPlacedWormholes] = useState<PlacedWormhole[]>([]);
-  const [wormholeExit, setWormholeExit] = useState({ x: 20, z: 20 });
 
   const handleAddGeometry = (type: GeometryType) => {
     setGeometries(prev => [...prev, { id: Date.now(), type }]);
@@ -38,14 +37,9 @@ export default function Home() {
     setUniverseType(newUniverse);
     setGeometries([]);
     setPlacedWormholes([]);
-    setWormholeExit({ x: 20, z: 20 });
     setConfig(prev => ({...prev, distance: newUniverse === 'my-wormholes' ? 25 : 15}))
   }, []);
   
-  const handleWormholeExitChange = useCallback((position: { x: number; z: number }) => {
-    setWormholeExit(position);
-  }, []);
-
   return (
     <SidebarProvider>
       <ConfigurationPanel 
@@ -57,8 +51,6 @@ export default function Home() {
         initialSpeed={config.wormholeSpeed}
         initialDistance={config.distance}
         initialBallSize={config.ballSize}
-        wormholeExit={wormholeExit}
-        onWormholeExitChange={handleWormholeExitChange}
       />
       <SidebarInset>
         <UniverseCanvas 
@@ -67,7 +59,6 @@ export default function Home() {
           geometries={geometries}
           placedWormholes={placedWormholes}
           onConfigChange={handleConfigChange}
-          wormholeExit={wormholeExit}
         />
       </SidebarInset>
     </SidebarProvider>
