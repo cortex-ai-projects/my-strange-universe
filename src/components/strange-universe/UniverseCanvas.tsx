@@ -464,19 +464,19 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
         
         let isMoving = false;
         if (keysPressed.current['w']) {
-            characterPosition.current.addScaledVector(camDirection, moveSpeed);
-            isMoving = true;
-        }
-        if (keysPressed.current['s']) {
             characterPosition.current.addScaledVector(camDirection, -moveSpeed);
             isMoving = true;
         }
+        if (keysPressed.current['s']) {
+            characterPosition.current.addScaledVector(camDirection, moveSpeed);
+            isMoving = true;
+        }
         if (keysPressed.current['a']) {
-            characterPosition.current.addScaledVector(strafeDirection, -moveSpeed);
+            characterPosition.current.addScaledVector(strafeDirection, moveSpeed);
             isMoving = true;
         }
         if (keysPressed.current['d']) {
-            characterPosition.current.addScaledVector(strafeDirection, moveSpeed);
+            characterPosition.current.addScaledVector(strafeDirection, -moveSpeed);
             isMoving = true;
         }
 
