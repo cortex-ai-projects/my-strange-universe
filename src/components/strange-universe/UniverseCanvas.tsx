@@ -10,6 +10,7 @@ interface UniverseCanvasProps {
   config: {
     wormholeSpeed: number;
     distance: number;
+    ballSize: number;
   };
   geometries: { id: number; type: 'cube' | 'sphere' | 'cone' }[];
   placedWormholes: { id: number }[];
@@ -294,7 +295,7 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
 
       if (key === 'f' && universeType === 'my-wormholes') {
         const throwSpeed = 0.8;
-        const projectileGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+        const projectileGeometry = new THREE.SphereGeometry(configRef.current.ballSize, 16, 16);
         const projectileMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffff00, emissiveIntensity: 0.5 });
         const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
         projectile.castShadow = true;
@@ -402,20 +403,48 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
         }
 
         const gravity = new THREE.Vector3(0, -0.01, 0);
-        const groundLevel = 0.3; // Projectile radius
+        const groundLevel = 0;
+        const worldSize = 100;
+        const boundaryMargin = 5;
 
         thrownObjectsRef.current.forEach((obj) => {
-          if (obj.mesh.position.y > groundLevel) {
+          const ballRadius = (obj.mesh.geometry as THREE.SphereGeometry).parameters.radius;
+          
+          if (obj.mesh.position.y > groundLevel + ballRadius) {
             obj.velocity.add(gravity);
           }
           
           obj.mesh.position.add(obj.velocity);
 
-          if (obj.mesh.position.y < groundLevel) {
-            obj.mesh.position.y = groundLevel;
+          // Boundary collision logic
+          const boundaryX = worldSize / 2 - boundaryMargin;
+          const boundaryZ = worldSize / 2 - boundaryMargin;
+
+          if (obj.mesh.position.x + ballRadius > boundaryX) {
+              obj.mesh.position.x = boundaryX - ballRadius;
+              obj.velocity.x *= -0.5; // Bounce with energy loss
+          } else if (obj.mesh.position.x - ballRadius < -boundaryX) {
+              obj.mesh.position.x = -boundaryX + ballRadius;
+              obj.velocity.x *= -0.5;
+          }
+
+          if (obj.mesh.position.z + ballRadius > boundaryZ) {
+              obj.mesh.position.z = boundaryZ - ballRadius;
+              obj.velocity.z *= -0.5;
+          } else if (obj.mesh.position.z - ballRadius < -boundaryZ) {
+              obj.mesh.position.z = -boundaryZ + ballRadius;
+              obj.velocity.z *= -0.5;
+          }
+
+
+          if (obj.mesh.position.y < groundLevel + ballRadius) {
+            obj.mesh.position.y = groundLevel + ballRadius;
             obj.velocity.x *= 0.8; // Friction
             obj.velocity.z *= 0.8; // Friction
-            obj.velocity.y = 0; // Stop vertical bounce
+            obj.velocity.y *= -0.3; // Bounce with energy loss
+            if(Math.abs(obj.velocity.y) < 0.05) { // Stop bouncing if velocity is low
+                obj.velocity.y = 0;
+            }
           }
           
           const distToEntrance = obj.mesh.position.distanceTo(entrancePosition);
@@ -595,5 +624,16 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
   }, [placedWormholes, universeType]);
 
 
-  return <div ref={mountRef} className="absolute inset-0 w-full h-full" />;
+  return (
+    <>
+      <div ref={mountRef} className="absolute inset-0 w-full h-full" />
+      {universeType === 'my-wormholes' && (
+        <div 
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-2xl font-mono pointer-events-none opacity-50 select-none"
+        >
+          +
+        </div>
+      )}
+    </>
+  );
 }

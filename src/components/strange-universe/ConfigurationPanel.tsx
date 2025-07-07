@@ -28,9 +28,10 @@ interface ConfigurationPanelProps {
   onUniverseChange: (type: UniverseType) => void;
   onAddGeometry: (type: GeometryType) => void;
   onAddWormhole: () => void;
-  onConfigChange: (config: { wormholeSpeed?: number; distance?: number }) => void;
+  onConfigChange: (config: { wormholeSpeed?: number; distance?: number, ballSize?: number }) => void;
   initialSpeed: number;
   initialDistance: number;
+  initialBallSize: number;
   wormholeExit: { x: number; z: number };
   onWormholeExitChange: (position: { x: number; z: number }) => void;
 }
@@ -43,6 +44,7 @@ export function ConfigurationPanel({
   onConfigChange, 
   initialSpeed, 
   initialDistance,
+  initialBallSize,
   wormholeExit,
   onWormholeExitChange
 }: ConfigurationPanelProps) {
@@ -52,6 +54,10 @@ export function ConfigurationPanel({
 
   const handleDistanceChange = (newDistance: number[]) => {
     onConfigChange({ distance: newDistance[0] });
+  };
+
+  const handleBallSizeChange = (newSize: number[]) => {
+    onConfigChange({ ballSize: newSize[0] });
   };
 
   return (
@@ -74,7 +80,7 @@ export function ConfigurationPanel({
             </Select>
           </div>
 
-          <Accordion type="multiple" defaultValue={["item-1", "item-2", "item-3", "item-4", "item-5", "item-6"]} className="w-full">
+          <Accordion type="multiple" defaultValue={["item-1", "item-2", "item-3", "item-4", "item-5", "item-6", "item-7"]} className="w-full">
             <AccordionItem value="item-1">
               <AccordionTrigger>Camera Controls</AccordionTrigger>
               <AccordionContent className="space-y-4 pt-2">
@@ -146,15 +152,36 @@ export function ConfigurationPanel({
             )}
 
             {universeType === 'my-wormholes' && (
-              <AccordionItem value="item-6">
-                <AccordionTrigger>Wormhole Controls</AccordionTrigger>
-                <AccordionContent className="pt-4">
-                  <WormholeMinimap 
-                    exitPosition={wormholeExit}
-                    onPositionChange={onWormholeExitChange}
-                  />
-                </AccordionContent>
-              </AccordionItem>
+              <>
+                <AccordionItem value="item-6">
+                  <AccordionTrigger>Wormhole Controls</AccordionTrigger>
+                  <AccordionContent className="pt-4">
+                    <WormholeMinimap 
+                      exitPosition={wormholeExit}
+                      onPositionChange={onWormholeExitChange}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="item-7">
+                  <AccordionTrigger>Object Controls</AccordionTrigger>
+                  <AccordionContent className="space-y-4 pt-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="ball-size">Ball Size</Label>
+                        <div className="flex items-center gap-4">
+                          <Slider
+                            id="ball-size"
+                            min={0.1}
+                            max={1.5}
+                            step={0.1}
+                            value={[initialBallSize]}
+                            onValueChange={handleBallSizeChange}
+                          />
+                          <span className="text-sm text-muted-foreground w-8 text-center">{initialBallSize.toFixed(1)}</span>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                </AccordionItem>
+              </>
             )}
 
             <AccordionItem value="item-5">

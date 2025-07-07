@@ -12,6 +12,7 @@ type PlacedWormhole = { id: number };
 const initialConfig = {
   wormholeSpeed: 1.0,
   distance: 25,
+  ballSize: 0.3,
 };
 
 export default function Home() {
@@ -55,6 +56,7 @@ export default function Home() {
         onConfigChange={handleConfigChange}
         initialSpeed={config.wormholeSpeed}
         initialDistance={config.distance}
+        initialBallSize={config.ballSize}
         wormholeExit={wormholeExit}
         onWormholeExitChange={handleWormholeExitChange}
       />
