@@ -90,10 +90,18 @@ const fieryGlowFragmentShader = `
   }
 `;
 
+type ThrownObject = {
+  mesh: THREE.Mesh;
+  velocity: THREE.Vector3;
+  lifetime: number;
+  canTeleport: boolean;
+};
+
 export function UniverseCanvas({ universeType, config, geometries, placedWormholes, onConfigChange, wormholeExit }: UniverseCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const geometriesRef = useRef<THREE.Group>(new THREE.Group());
   const placedWormholesRef = useRef<THREE.Group>(new THREE.Group());
+  const thrownObjectsRef = useRef<ThrownObject[]>([]);
   const wormholeExitObjectRef = useRef<THREE.Mesh>();
   const wormholeExitLightRef = useRef<THREE.PointLight>();
   const characterPosition = useRef(new THREE.Vector3(0, 2, 0));
@@ -252,10 +260,27 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
     
     const handleKeyboardDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      if (['w', 'a', 's', 'd', 'q', 'e'].includes(key)) {
+      if (['w', 'a', 's', 'd', 'q', 'e', 'f'].includes(key)) {
         event.preventDefault();
       }
       keysPressed.current[key] = true;
+
+      if (key === 'f' && universeType === 'my-wormholes') {
+        const throwSpeed = 0.8;
+        const projectileGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+        const projectileMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffff00, emissiveIntensity: 0.5 });
+        const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
+        projectile.castShadow = true;
+        
+        const direction = new THREE.Vector3();
+        camera.getWorldDirection(direction);
+
+        projectile.position.copy(characterPosition.current).add(direction.clone().multiplyScalar(2));
+        
+        const velocity = direction.multiplyScalar(throwSpeed);
+        scene.add(projectile);
+        thrownObjectsRef.current.push({ mesh: projectile, velocity, lifetime: 500, canTeleport: true });
+      }
     };
     const handleKeyboardUp = (event: KeyboardEvent) => {
       keysPressed.current[event.key.toLowerCase()] = false;
@@ -349,6 +374,40 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
           }
         }
 
+        const objectsToRemove: number[] = [];
+        thrownObjectsRef.current.forEach((obj, index) => {
+          obj.mesh.position.add(obj.velocity);
+          obj.lifetime--;
+
+          if (obj.lifetime <= 0) {
+            objectsToRemove.push(index);
+            scene.remove(obj.mesh);
+            obj.mesh.geometry.dispose();
+            (obj.mesh.material as THREE.Material).dispose();
+          } else {
+            const distToEntrance = obj.mesh.position.distanceTo(entrancePosition);
+            const distToExit = obj.mesh.position.distanceTo(exitPosition);
+
+            if (obj.canTeleport) {
+              if (distToEntrance < teleportThreshold) {
+                obj.mesh.position.copy(exitPosition);
+                obj.canTeleport = false;
+              } else if (distToExit < teleportThreshold) {
+                obj.mesh.position.copy(entrancePosition);
+                obj.canTeleport = false;
+              }
+            } else {
+              if (distToEntrance > teleportThreshold + 1 && distToExit > teleportThreshold + 1) {
+                obj.canTeleport = true;
+              }
+            }
+          }
+        });
+
+        for (let i = objectsToRemove.length - 1; i >= 0; i--) {
+          thrownObjectsRef.current.splice(objectsToRemove[i], 1);
+        }
+
         controls.rotation.x = THREE.MathUtils.clamp(controls.rotation.x, -Math.PI / 3, Math.PI / 2.5);
         const lookAtPoint = characterPosition.current;
         camera.position.x = lookAtPoint.x + distance * Math.sin(rotation.y) * Math.cos(rotation.x);
@@ -402,6 +461,14 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
       mount.removeEventListener('mousemove', handleMouseMove);
       mount.removeEventListener('wheel', handleWheel);
       resizeObserver.unobserve(mount);
+      
+      thrownObjectsRef.current.forEach(obj => {
+        scene.remove(obj.mesh);
+        obj.mesh.geometry.dispose();
+        (obj.mesh.material as THREE.Material).dispose();
+      });
+      thrownObjectsRef.current = [];
+
       if (renderer.domElement.parentElement === mount) {
         mount.removeChild(renderer.domElement);
       }
