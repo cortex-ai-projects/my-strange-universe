@@ -45,6 +45,9 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
   const geometriesRef = useRef<THREE.Group>(new THREE.Group());
   const placedWormholesRef = useRef<THREE.Group>(new THREE.Group());
   const wormholeExitObjectRef = useRef<THREE.Mesh>();
+  const wormholeExitLightRef = useRef<THREE.PointLight>();
+  const characterPosition = useRef(new THREE.Vector3(0, 2, 0));
+  const keysPressed = useRef<{ [key: string]: boolean }>({});
   
   const configRef = useRef(config);
   useEffect(() => { configRef.current = config; }, [config]);
@@ -154,18 +157,29 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
         scene.add(mountain);
       }
       
-      const entranceMaterial = new THREE.MeshStandardMaterial({ color: 0xBF00FF, metalness: 0.8, roughness: 0.2, emissive: 0xBF00FF, emissiveIntensity: 2 });
+      const entranceMaterial = new THREE.MeshStandardMaterial({ color: 0xFF8C00, metalness: 0.8, roughness: 0.2, emissive: 0xFF8C00, emissiveIntensity: 3 });
       const entrance = new THREE.Mesh(new THREE.TorusGeometry(3, 0.3, 16, 100), entranceMaterial);
       entrance.position.set(0, 5, -25);
       entrance.name = 'wormhole-entrance';
       scene.add(entrance);
+      const entranceLight = new THREE.PointLight(0xFF8C00, 10, 30);
+      entranceLight.position.copy(entrance.position);
+      scene.add(entranceLight);
       
       const exitMaterial = new THREE.MeshStandardMaterial({ color: 0x00FFFF, metalness: 0.8, roughness: 0.2, emissive: 0x00FFFF, emissiveIntensity: 2 });
       wormholeExitObjectRef.current = new THREE.Mesh(new THREE.TorusGeometry(3, 0.3, 16, 100), exitMaterial);
       wormholeExitObjectRef.current.position.set(wormholeExitPosRef.current.x, 5, wormholeExitPosRef.current.z);
       scene.add(wormholeExitObjectRef.current);
+      wormholeExitLightRef.current = new THREE.PointLight(0x00FFFF, 10, 30);
+      scene.add(wormholeExitLightRef.current);
     }
     
+    const handleKeyboardDown = (event: KeyboardEvent) => {
+      keysPressed.current[event.key.toLowerCase()] = true;
+    };
+    const handleKeyboardUp = (event: KeyboardEvent) => {
+      keysPressed.current[event.key.toLowerCase()] = false;
+    };
     const handleMouseDown = (event: MouseEvent) => {
       event.preventDefault();
       controls.isDragging = true;
@@ -190,6 +204,8 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
       onConfigChangeRef.current({ distance: newDistance });
     };
 
+    window.addEventListener('keydown', handleKeyboardDown);
+    window.addEventListener('keyup', handleKeyboardUp);
     mount.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
     mount.addEventListener('mousemove', handleMouseMove);
@@ -216,19 +232,32 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
       const { distance, wormholeSpeed } = configRef.current;
       
       if (universeType === 'my-wormholes') {
+        const moveSpeed = 0.2;
+        const camDirection = new THREE.Vector3();
+        camera.getWorldDirection(camDirection);
+        camDirection.y = 0;
+        camDirection.normalize();
+
+        const strafeDirection = new THREE.Vector3();
+        strafeDirection.crossVectors(camera.up, camDirection);
+
+        if (keysPressed.current['w']) characterPosition.current.addScaledVector(camDirection, moveSpeed);
+        if (keysPressed.current['s']) characterPosition.current.addScaledVector(camDirection, -moveSpeed);
+        if (keysPressed.current['a']) characterPosition.current.addScaledVector(strafeDirection, moveSpeed);
+        if (keysPressed.current['d']) characterPosition.current.addScaledVector(strafeDirection, -moveSpeed);
+        
         controls.rotation.x = THREE.MathUtils.clamp(controls.rotation.x, -Math.PI / 3, Math.PI / 2.5);
-        const lookAtPoint = new THREE.Vector3(0, 2, 0);
+        const lookAtPoint = characterPosition.current;
         camera.position.x = lookAtPoint.x + distance * Math.sin(rotation.y) * Math.cos(rotation.x);
         camera.position.y = lookAtPoint.y + distance * Math.sin(rotation.x);
         camera.position.z = lookAtPoint.z + distance * Math.cos(rotation.y) * Math.cos(rotation.x);
         camera.position.y = Math.max(camera.position.y, 3);
         camera.lookAt(lookAtPoint);
 
-        const entrance = scene.getObjectByName('wormhole-entrance');
-        if (entrance) entrance.rotation.y += 0.01;
-        if(wormholeExitObjectRef.current) {
-          wormholeExitObjectRef.current.position.set(wormholeExitPosRef.current.x, 5, wormholeExitPosRef.current.z);
-          wormholeExitObjectRef.current.rotation.y -= 0.01;
+        if(wormholeExitObjectRef.current && wormholeExitLightRef.current) {
+          const exitPos = new THREE.Vector3(wormholeExitPosRef.current.x, 5, wormholeExitPosRef.current.z);
+          wormholeExitObjectRef.current.position.copy(exitPos);
+          wormholeExitLightRef.current.position.copy(exitPos);
         }
       } else {
         controls.rotation.x = THREE.MathUtils.clamp(controls.rotation.x, -Math.PI / 2 + 0.1, Math.PI / 2 - 0.1);
@@ -255,6 +284,8 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
 
     return () => {
       cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('keydown', handleKeyboardDown);
+      window.removeEventListener('keyup', handleKeyboardUp);
       mount.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseup', handleMouseUp);
       mount.removeEventListener('mousemove', handleMouseMove);
