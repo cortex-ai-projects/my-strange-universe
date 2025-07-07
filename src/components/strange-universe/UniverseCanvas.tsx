@@ -6,8 +6,10 @@ import * as THREE from 'three';
 interface UniverseCanvasProps {
   config: {
     wormholeSpeed: number;
+    distance: number;
   };
   geometries: { id: number; type: 'cube' | 'sphere' | 'cone' }[];
+  onConfigChange: (config: { distance: number }) => void;
 }
 
 const wormholeVertexShader = `
@@ -34,7 +36,7 @@ const wormholeFragmentShader = `
   }
 `;
 
-export function UniverseCanvas({ config, geometries }: UniverseCanvasProps) {
+export function UniverseCanvas({ config, geometries, onConfigChange }: UniverseCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const geometriesRef = useRef<THREE.Group>(new THREE.Group());
@@ -43,8 +45,18 @@ export function UniverseCanvas({ config, geometries }: UniverseCanvasProps) {
     isDragging: false,
     previousMousePosition: { x: 0, y: 0 },
     rotation: { x: 0, y: 0 },
-    distance: 15,
   });
+
+  const configRef = useRef(config);
+  useEffect(() => {
+    configRef.current = config;
+  }, [config]);
+
+  const onConfigChangeRef = useRef(onConfigChange);
+  useEffect(() => {
+    onConfigChangeRef.current = onConfigChange;
+  }, [onConfigChange]);
+
 
   useEffect(() => {
     if (!mountRef.current || rendererRef.current) return;
@@ -89,7 +101,7 @@ export function UniverseCanvas({ config, geometries }: UniverseCanvasProps) {
       fragmentShader: wormholeFragmentShader,
       uniforms: {
         uTime: { value: 0 },
-        uSpeed: { value: config.wormholeSpeed },
+        uSpeed: { value: configRef.current.wormholeSpeed },
         uColor: { value: new THREE.Color(0xBF00FF) },
       },
       side: THREE.BackSide,
@@ -128,8 +140,9 @@ export function UniverseCanvas({ config, geometries }: UniverseCanvasProps) {
 
     const handleWheel = (event: WheelEvent) => {
       event.preventDefault();
-      controlsRef.current.distance += event.deltaY * 0.02;
-      controlsRef.current.distance = THREE.MathUtils.clamp(controlsRef.current.distance, 5, 40);
+      let newDistance = configRef.current.distance + event.deltaY * 0.02;
+      newDistance = THREE.MathUtils.clamp(newDistance, 5, 40);
+      onConfigChangeRef.current({ distance: newDistance });
     };
 
     mount.addEventListener('mousedown', handleMouseDown);
@@ -155,7 +168,8 @@ export function UniverseCanvas({ config, geometries }: UniverseCanvasProps) {
       requestAnimationFrame(animate);
       const elapsedTime = clock.getElapsedTime();
       
-      const { rotation, distance } = controlsRef.current;
+      const { rotation } = controlsRef.current;
+      const { distance } = configRef.current;
       camera.position.x = distance * Math.sin(rotation.y) * Math.cos(rotation.x);
       camera.position.y = distance * Math.sin(rotation.x);
       camera.position.z = distance * Math.cos(rotation.y) * Math.cos(rotation.x);
@@ -198,7 +212,7 @@ export function UniverseCanvas({ config, geometries }: UniverseCanvasProps) {
     if(wormhole) {
       wormhole.material.uniforms.uSpeed.value = config.wormholeSpeed;
     }
-  }, [config]);
+  }, [config.wormholeSpeed]);
 
   useEffect(() => {
     const group = geometriesRef.current;

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,16 +16,18 @@ type GeometryType = "cube" | "sphere" | "cone";
 
 interface ConfigurationPanelProps {
   onAddGeometry: (type: GeometryType) => void;
-  onConfigChange: (config: { wormholeSpeed: number }) => void;
+  onConfigChange: (config: { wormholeSpeed?: number; distance?: number }) => void;
   initialSpeed: number;
+  initialDistance: number;
 }
 
-export function ConfigurationPanel({ onAddGeometry, onConfigChange, initialSpeed }: ConfigurationPanelProps) {
-  const [speed, setSpeed] = useState(initialSpeed);
-
+export function ConfigurationPanel({ onAddGeometry, onConfigChange, initialSpeed, initialDistance }: ConfigurationPanelProps) {
   const handleSpeedChange = (newSpeed: number[]) => {
-    setSpeed(newSpeed[0]);
     onConfigChange({ wormholeSpeed: newSpeed[0] });
+  };
+
+  const handleDistanceChange = (newDistance: number[]) => {
+    onConfigChange({ distance: newDistance[0] });
   };
 
   return (
@@ -48,10 +49,24 @@ export function ConfigurationPanel({ onAddGeometry, onConfigChange, initialSpeed
                       min={0.1}
                       max={2}
                       step={0.1}
-                      value={[speed]}
+                      value={[initialSpeed]}
                       onValueChange={handleSpeedChange}
                     />
-                    <span className="text-sm text-muted-foreground w-8 text-center">{speed.toFixed(1)}</span>
+                    <span className="text-sm text-muted-foreground w-8 text-center">{initialSpeed.toFixed(1)}</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="camera-distance">Camera Distance</Label>
+                  <div className="flex items-center gap-4">
+                    <Slider
+                      id="camera-distance"
+                      min={5}
+                      max={40}
+                      step={1}
+                      value={[initialDistance]}
+                      onValueChange={handleDistanceChange}
+                    />
+                    <span className="text-sm text-muted-foreground w-8 text-center">{initialDistance.toFixed(0)}</span>
                   </div>
                 </div>
               </AccordionContent>
