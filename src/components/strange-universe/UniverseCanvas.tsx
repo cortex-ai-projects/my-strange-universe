@@ -185,18 +185,18 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
       scene.add(geometriesRef.current);
       scene.add(placedWormholesRef.current);
     } else if (universeType === 'my-wormholes') {
-      scene.background = new THREE.Color(0x111122);
-      scene.fog = new THREE.Fog(0x111122, 50, 150);
+      scene.background = new THREE.Color(0x87CEEB);
+      scene.fog = new THREE.Fog(0x87CEEB, 75, 200);
 
-      const hemisphereLight = new THREE.HemisphereLight(0x77AADD, 0x448855, 1);
+      const hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x448855, 1.5);
       scene.add(hemisphereLight);
-      const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+      const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
       dirLight.position.set(20, 30, 10);
       dirLight.castShadow = true;
       scene.add(dirLight);
 
       const groundGeometry = new THREE.PlaneGeometry(100, 100);
-      const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x336633 });
+      const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x669966 });
       const ground = new THREE.Mesh(groundGeometry, groundMaterial);
       ground.rotation.x = -Math.PI / 2;
       ground.receiveShadow = true;
