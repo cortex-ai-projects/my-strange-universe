@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Box, Cone, Circle, GitCommitHorizontal } from "lucide-react";
 
-export type UniverseType = "wormhole" | "my-wormholes";
+export type UniverseType = "wormhole" | "my-wormholes" | "infinity";
 type GeometryType = "cube" | "sphere" | "cone";
 
 interface ConfigurationPanelProps {
@@ -27,10 +27,11 @@ interface ConfigurationPanelProps {
   onUniverseChange: (type: UniverseType) => void;
   onAddGeometry: (type: GeometryType) => void;
   onAddWormhole: () => void;
-  onConfigChange: (config: { wormholeSpeed?: number; distance?: number, ballSize?: number }) => void;
+  onConfigChange: (config: { wormholeSpeed?: number; distance?: number, ballSize?: number, universeSize?: number }) => void;
   initialSpeed: number;
   initialDistance: number;
   initialBallSize: number;
+  initialUniverseSize: number;
 }
 
 export function ConfigurationPanel({ 
@@ -41,7 +42,8 @@ export function ConfigurationPanel({
   onConfigChange, 
   initialSpeed, 
   initialDistance,
-  initialBallSize
+  initialBallSize,
+  initialUniverseSize,
 }: ConfigurationPanelProps) {
   const handleSpeedChange = (newSpeed: number[]) => {
     onConfigChange({ wormholeSpeed: newSpeed[0] });
@@ -53,6 +55,10 @@ export function ConfigurationPanel({
 
   const handleBallSizeChange = (newSize: number[]) => {
     onConfigChange({ ballSize: newSize[0] });
+  };
+
+  const handleUniverseSizeChange = (newSize: number[]) => {
+    onConfigChange({ universeSize: newSize[0] });
   };
 
   return (
@@ -71,11 +77,12 @@ export function ConfigurationPanel({
               <SelectContent>
                 <SelectItem value="wormhole">Wormhole</SelectItem>
                 <SelectItem value="my-wormholes">My Wormholes</SelectItem>
+                <SelectItem value="infinity">Infinity Universe</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <Accordion type="multiple" defaultValue={["item-1", "item-2", "item-3", "item-4", "item-5", "item-6", "item-7"]} className="w-full">
+          <Accordion type="multiple" defaultValue={["item-1", "item-2", "item-3", "item-4", "item-5", "item-6", "item-7", "item-8"]} className="w-full">
             <AccordionItem value="item-1">
               <AccordionTrigger>Camera Controls</AccordionTrigger>
               <AccordionContent className="space-y-4 pt-2">
@@ -179,6 +186,46 @@ export function ConfigurationPanel({
                 </AccordionItem>
               </>
             )}
+            
+            {universeType === 'infinity' && (
+              <>
+                <AccordionItem value="item-8">
+                  <AccordionTrigger>Universe Controls</AccordionTrigger>
+                  <AccordionContent className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="universe-size">Universe Size</Label>
+                      <div className="flex items-center gap-4">
+                        <Slider
+                          id="universe-size"
+                          min={50}
+                          max={500}
+                          step={10}
+                          value={[initialUniverseSize]}
+                          onValueChange={handleUniverseSizeChange}
+                        />
+                        <span className="text-sm text-muted-foreground w-8 text-center">{initialUniverseSize.toFixed(0)}</span>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="item-7">
+                  <AccordionTrigger>Object Controls</AccordionTrigger>
+                  <AccordionContent className="pt-4 text-sm text-muted-foreground">
+                    <p className="font-medium">Press <code className="font-mono p-1 text-xs bg-muted rounded-sm">F</code> to generate an object in front of you.</p>
+                  </AccordionContent>
+                </AccordionItem>
+                 <AccordionItem value="item-6">
+                  <AccordionTrigger>Flight Controls</AccordionTrigger>
+                  <AccordionContent className="pt-4 text-sm text-muted-foreground">
+                    <div className="mt-2 space-y-1">
+                      <div><code className="font-mono p-1 text-xs bg-muted rounded-sm">Shift</code> — Fly Up</div>
+                      <div><code className="font-mono p-1 text-xs bg-muted rounded-sm">Control</code> — Fly Down</div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </>
+            )}
+
 
             <AccordionItem value="item-5">
               <AccordionTrigger>Code Example</AccordionTrigger>

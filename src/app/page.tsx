@@ -13,6 +13,7 @@ const initialConfig = {
   wormholeSpeed: 1.0,
   distance: 25,
   ballSize: 0.3,
+  universeSize: 100,
 };
 
 export default function Home() {
@@ -37,7 +38,11 @@ export default function Home() {
     setUniverseType(newUniverse);
     setGeometries([]);
     setPlacedWormholes([]);
-    setConfig(prev => ({...prev, distance: newUniverse === 'my-wormholes' ? 25 : 15}))
+    let distance = 25;
+    if (newUniverse === 'my-wormholes') distance = 25;
+    if (newUniverse === 'wormhole') distance = 15;
+    if (newUniverse === 'infinity') distance = 35;
+    setConfig(prev => ({...prev, distance }))
   }, []);
   
   return (
@@ -51,6 +56,7 @@ export default function Home() {
         initialSpeed={config.wormholeSpeed}
         initialDistance={config.distance}
         initialBallSize={config.ballSize}
+        initialUniverseSize={config.universeSize}
       />
       <SidebarInset>
         <UniverseCanvas 
