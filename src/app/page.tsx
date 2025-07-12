@@ -39,7 +39,7 @@ export default function Home() {
     setGeometries([]);
     setPlacedWormholes([]);
     let distance = 25;
-    if (newUniverse === 'my-wormholes') distance = 25;
+    if (newUniverse === 'portals') distance = 25;
     if (newUniverse === 'wormhole') distance = 15;
     if (newUniverse === 'infinity') distance = 35;
     setConfig(prev => ({...prev, distance }))

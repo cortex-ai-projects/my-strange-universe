@@ -131,7 +131,7 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
       scene.add(wormhole);
       scene.add(geometriesRef.current);
       scene.add(placedWormholesRef.current);
-    } else if (universeType === 'my-wormholes' || universeType === 'infinity') {
+    } else if (universeType === 'portals' || universeType === 'infinity') {
       scene.background = new THREE.Color(0x87CEEB); // Light Sky Blue
       scene.fog = new THREE.Fog(0x87CEEB, 75, 400);
 
@@ -276,7 +276,7 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
         thrownObjectsRef.current.push({ mesh: projectile, velocity, canTeleport: true });
       }
 
-      if ((key === 'p' || key === 'o') && universeType === 'my-wormholes' && characterRef.current) {
+      if ((key === 'p' || key === 'o') && universeType === 'portals' && characterRef.current) {
         const isEntrance = key === 'p';
         const portalColor = isEntrance ? 0x0000ff : 0xff0000;
         const portalsArrayRef = isEntrance ? entrancePortalsRef : exitPortalsRef;
@@ -360,7 +360,7 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
       const { rotation } = controls;
       const { distance, wormholeSpeed, universeSize } = configRef.current;
       
-      if (universeType === 'my-wormholes' || universeType === 'infinity') {
+      if (universeType === 'portals' || universeType === 'infinity') {
         const isInfinity = universeType === 'infinity';
         const moveSpeed = isInfinity ? 1.0 : 0.2;
         const rotateSpeed = 0.02;
@@ -688,7 +688,7 @@ export function UniverseCanvas({ universeType, config, geometries, placedWormhol
   return (
     <>
       <div ref={mountRef} className="absolute inset-0 w-full h-full" />
-      {(universeType === 'my-wormholes' || universeType === 'infinity') && (
+      {(universeType === 'portals' || universeType === 'infinity') && (
         <div 
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-2xl font-mono pointer-events-none opacity-50 select-none"
         >

@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Box, Cone, Circle, GitCommitHorizontal } from "lucide-react";
 
-export type UniverseType = "wormhole" | "my-wormholes" | "infinity";
+export type UniverseType = "wormhole" | "portals" | "infinity";
 type GeometryType = "cube" | "sphere" | "cone";
 
 interface ConfigurationPanelProps {
@@ -76,7 +76,7 @@ export function ConfigurationPanel({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="wormhole">Wormhole</SelectItem>
-                <SelectItem value="my-wormholes">My Wormholes</SelectItem>
+                <SelectItem value="portals">Portals</SelectItem>
                 <SelectItem value="infinity">Infinity Universe</SelectItem>
               </SelectContent>
             </Select>
@@ -153,7 +153,7 @@ export function ConfigurationPanel({
               </>
             )}
 
-            {universeType === 'my-wormholes' && (
+            {universeType === 'portals' && (
               <>
                 <AccordionItem value="item-6">
                   <AccordionTrigger>Portal Controls</AccordionTrigger>
